@@ -1,4 +1,4 @@
-name: 'Github Runner IP Whitelister Cloudlfare'
+name: 'Github Runner IP Whitelister cloudflare'
 description: 'Automatically manage Cloudflare IP access rules for CI/CD pipelines. Whitelist runner IPs to bypass Cloudflare protection during automated testing.'
 author: 'DiyRex'
 
