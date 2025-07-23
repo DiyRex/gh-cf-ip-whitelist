@@ -1,0 +1,245 @@
+name: 'Cloudflare IP Whitelist Manager'
+description: '🔒 Automatically manage Cloudflare IP access rules for CI/CD pipelines. Perfect for Playwright, Selenium, and other testing frameworks that need to bypass Cloudflare protection.'
+author: 'DiyRex'
+
+branding:
+  icon: 'shield'
+  color: 'orange'
+
+inputs:
+  action:
+    description: 'Action to perform: "create" or "delete"'
+    required: true
+    default: 'create'
+  
+  api-token:
+    description: 'Cloudflare API token with Zone:Firewall Services:Edit permission'
+    required: true
+  
+  zone-id:
+    description: 'Cloudflare Zone ID (found in your domain dashboard)'
+    required: true
+  
+  ip-address:
+    description: 'IP address to manage (auto-detected if not provided)'
+    required: false
+  
+  rule-id:
+    description: 'Rule ID for delete action (output from create action)'
+    required: false
+  
+  mode:
+    description: 'Access rule mode: whitelist, block, challenge, js_challenge, managed_challenge'
+    required: false
+    default: 'whitelist'
+  
+  notes:
+    description: 'Custom notes for the rule (helpful for identification)'
+    required: false
+    default: 'GitHub Actions - Automated CI/CD rule'
+  
+  wait-time:
+    description: 'Seconds to wait after creating rule for Cloudflare propagation'
+    required: false
+    default: '30'
+
+outputs:
+  rule-id:
+    description: 'ID of the created/managed rule (save this for deletion)'
+    value: ${{ steps.manage-rule.outputs.rule-id }}
+  
+  success:
+    description: 'Whether the operation was successful (true/false)'
+    value: ${{ steps.manage-rule.outputs.success }}
+  
+  ip-address:
+    description: 'IP address that was managed'
+    value: ${{ steps.get-ip.outputs.ip-address || inputs.ip-address }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        echo "🔍 Validating inputs..."
+        
+        if [ "${{ inputs.action }}" != "create" ] && [ "${{ inputs.action }}" != "delete" ]; then
+          echo "❌ Invalid action: ${{ inputs.action }}"
+          echo "   Valid actions: create, delete"
+          exit 1
+        fi
+        
+        if [ "${{ inputs.action }}" = "delete" ] && [ -z "${{ inputs.rule-id }}" ]; then
+          echo "❌ rule-id is required for delete action"
+          echo "   Use the rule-id output from the create step"
+          exit 1
+        fi
+        
+        echo "✅ Input validation passed"
+    
+    - name: Get runner IP address
+      id: get-ip
+      if: inputs.action == 'create' && inputs.ip-address == ''
+      shell: bash
+      run: |
+        echo "🌐 Auto-detecting runner IP address..."
+        
+        # Try multiple IP detection services for reliability
+        for service in "https://ipinfo.io/ip" "https://icanhazip.com" "https://ident.me" "https://api64.ipify.org"; do
+          echo "   Trying $service..."
+          IP=$(curl -s --max-time 10 "$service" 2>/dev/null | tr -d '[:space:]')
+          
+          if [[ $IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            echo "ip-address=$IP" >> $GITHUB_OUTPUT
+            echo "✅ Detected IP address: $IP"
+            exit 0
+          fi
+        done
+        
+        echo "❌ Failed to detect IP address from any service"
+        echo "   Please provide ip-address input manually"
+        exit 1
+    
+    - name: Manage Cloudflare IP access rule
+      id: manage-rule
+      shell: bash
+      env:
+        ACTION: ${{ inputs.action }}
+        API_TOKEN: ${{ inputs.api-token }}
+        ZONE_ID: ${{ inputs.zone-id }}
+        IP_ADDRESS: ${{ inputs.ip-address || steps.get-ip.outputs.ip-address }}
+        RULE_ID: ${{ inputs.rule-id }}
+        MODE: ${{ inputs.mode }}
+        NOTES: ${{ inputs.notes }}
+        WAIT_TIME: ${{ inputs.wait-time }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        # Function to create Cloudflare access rule
+        create_rule() {
+          echo "🔒 Creating Cloudflare IP access rule..."
+          echo "   IP Address: $IP_ADDRESS"
+          echo "   Mode: $MODE"
+          echo "   Zone ID: $ZONE_ID"
+          echo "   Notes: $NOTES"
+          
+          # Prepare JSON payload
+          PAYLOAD=$(cat <<EOF
+        {
+          "mode": "$MODE",
+          "configuration": {
+            "target": "ip",
+            "value": "$IP_ADDRESS"
+          },
+          "notes": "$NOTES - Run: $GITHUB_RUN_ID - Repo: $GITHUB_REPOSITORY"
+        }
+        EOF
+        )
+          
+          # Make API call
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/firewall/access_rules/rules" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHub-Actions-CF-IP-Whitelist/1.0" \
+            --data "$PAYLOAD")
+          
+          # Parse response
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          # Check success
+          if [ "$HTTP_CODE" -eq 200 ] && echo "$BODY" | grep -q '"success":true'; then
+            RULE_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"\([^"]*\)"/\1/')
+            
+            echo "rule-id=$RULE_ID" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
+            
+            echo "✅ Rule created successfully!"
+            echo "   Rule ID: $RULE_ID"
+            echo "   Access: IP $IP_ADDRESS is now ${MODE}ed"
+            
+            # Wait for propagation
+            if [ "$WAIT_TIME" -gt 0 ]; then
+              echo "⏳ Waiting ${WAIT_TIME}s for Cloudflare propagation..."
+              sleep "$WAIT_TIME"
+              echo "✅ Propagation wait complete"
+            fi
+          else
+            echo "❌ Failed to create Cloudflare rule"
+            echo "   HTTP Status: $HTTP_CODE"
+            echo "   Response: $BODY"
+            echo "success=false" >> $GITHUB_OUTPUT
+            
+            # Common error messages
+            if echo "$BODY" | grep -q "10000"; then
+              echo "💡 Tip: Check your API token permissions"
+            elif echo "$BODY" | grep -q "10001"; then
+              echo "💡 Tip: Verify your Zone ID is correct"
+            fi
+            
+            exit 1
+          fi
+        }
+        
+        # Function to delete Cloudflare access rule
+        delete_rule() {
+          echo "🗑️ Deleting Cloudflare IP access rule..."
+          echo "   Rule ID: $RULE_ID"
+          echo "   Zone ID: $ZONE_ID"
+          
+          # Make API call
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/firewall/access_rules/rules/$RULE_ID" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "User-Agent: GitHub-Actions-CF-IP-Whitelist/1.0")
+          
+          # Parse response
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          # Check success
+          if [ "$HTTP_CODE" -eq 200 ] && echo "$BODY" | grep -q '"success":true'; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Rule deleted successfully"
+            echo "   IP access rule $RULE_ID has been removed"
+          else
+            echo "⚠️ Failed to delete Cloudflare rule"
+            echo "   HTTP Status: $HTTP_CODE"
+            echo "   Response: $BODY"
+            echo "   This might be expected if the rule was already deleted"
+            echo "success=false" >> $GITHUB_OUTPUT
+            
+            # Don't exit with error for delete operations to allow cleanup
+          fi
+        }
+        
+        # Input validation
+        if [ -z "$API_TOKEN" ] || [ -z "$ZONE_ID" ]; then
+          echo "❌ API token and Zone ID are required"
+          exit 1
+        fi
+        
+        # Execute action
+        case "$ACTION" in
+          "create")
+            if [ -z "$IP_ADDRESS" ]; then
+              echo "❌ IP address is required for create action"
+              exit 1
+            fi
+            create_rule
+            ;;
+          "delete")
+            if [ -z "$RULE_ID" ]; then
+              echo "❌ Rule ID is required for delete action"
+              exit 1
+            fi
+            delete_rule
+            ;;
+          *)
+            echo "❌ Invalid action: $ACTION"
+            echo "   Valid actions: create, delete"
+            exit 1
+            ;;
+        esac
