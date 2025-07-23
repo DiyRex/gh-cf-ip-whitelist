@@ -1,5 +1,5 @@
 name: 'Github Runner IP Whitelister cloudflare'
-description: 'Add GitHub runner IP to Cloudflare whitelist for automated CI/CD testing'
+description: 'Add GitHub runner IPs to Cloudflare whitelist for CI/CD bypass'
 author: 'DiyRex'
 
 branding:
@@ -141,34 +141,44 @@ runs:
         EOF
         )
           
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          RESPONSE=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/firewall/access_rules/rules" \
             -H "Authorization: Bearer $API_TOKEN" \
             -H "Content-Type: application/json" \
             -H "User-Agent: GitHub-Actions-Cloudflare-Manager/1.0" \
             --data "$PAYLOAD")
           
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "📄 Full API Response:"
+          echo "$RESPONSE"
           
-          if [ "$HTTP_CODE" -eq 200 ] && echo "$BODY" | grep -q '"success":true'; then
-            RULE_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"\([^"]*\)"/\1/')
+          # Check if API call was successful by looking for "success": true (handles formatted JSON)
+          if echo "$RESPONSE" | tr -d ' \n\r\t' | grep -q '"success":true'; then
+            echo "✅ API call successful, extracting rule ID..."
             
-            echo "rule-id=$RULE_ID" >> $GITHUB_OUTPUT
-            echo "success=true" >> $GITHUB_OUTPUT
+            # Extract rule ID from the response (remove all whitespace first for reliable parsing)
+            RULE_ID=$(echo "$RESPONSE" | tr -d ' \n\r\t' | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"\([^"]*\)"/\1/')
             
-            echo "✅ Cloudflare rule created successfully!"
-            echo "   🆔 Rule ID: $RULE_ID"
-            
-            if [ "$WAIT_TIME" -gt 0 ]; then
-              echo "⏳ Waiting ${WAIT_TIME}s for Cloudflare propagation..."
-              sleep "$WAIT_TIME"
-              echo "✅ Propagation wait complete"
+            if [ -n "$RULE_ID" ] && [ "$RULE_ID" != "" ]; then
+              echo "rule-id=$RULE_ID" >> $GITHUB_OUTPUT
+              echo "success=true" >> $GITHUB_OUTPUT
+              
+              echo "✅ Cloudflare rule created successfully!"
+              echo "   🆔 Rule ID: $RULE_ID"
+              echo "   📍 IP: $IP_ADDRESS"
+              echo "   🎯 Mode: $MODE"
+              
+              if [ "$WAIT_TIME" -gt 0 ]; then
+                echo "⏳ Waiting ${WAIT_TIME}s for Cloudflare propagation..."
+                sleep "$WAIT_TIME"
+                echo "✅ Propagation wait complete"
+              fi
+            else
+              echo "❌ Could not extract rule ID from API response"
+              echo "success=false" >> $GITHUB_OUTPUT
+              exit 1
             fi
           else
-            echo "❌ Failed to create Cloudflare rule"
-            echo "   📊 HTTP Code: $HTTP_CODE"
-            echo "   📄 Response: $BODY"
+            echo "❌ Cloudflare API returned error or unsuccessful response"
             echo "success=false" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -177,23 +187,25 @@ runs:
         delete_rule() {
           echo "🗑️ Deleting Cloudflare IP access rule..."
           echo "   🆔 Rule ID: $RULE_ID"
+          echo "   🌐 Zone: $ZONE_ID"
           
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+          RESPONSE=$(curl -s -X DELETE \
             "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/firewall/access_rules/rules/$RULE_ID" \
             -H "Authorization: Bearer $API_TOKEN" \
             -H "User-Agent: GitHub-Actions-Cloudflare-Manager/1.0")
           
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "📄 Delete API Response:"
+          echo "$RESPONSE"
           
-          if [ "$HTTP_CODE" -eq 200 ] && echo "$BODY" | grep -q '"success":true'; then
+          # Check if delete was successful (handles formatted JSON)
+          if echo "$RESPONSE" | tr -d ' \n\r\t' | grep -q '"success":true'; then
             echo "success=true" >> $GITHUB_OUTPUT
             echo "✅ Cloudflare rule deleted successfully"
+            echo "   🆔 Rule ID: $RULE_ID"
           else
             echo "⚠️ Failed to delete Cloudflare rule"
-            echo "   📊 HTTP Code: $HTTP_CODE"
-            echo "   📄 Response: $BODY"
             echo "success=false" >> $GITHUB_OUTPUT
+            # Don't exit 1 for delete operations - allow workflow to continue
           fi
         }
         
