@@ -1,7 +1,6 @@
 # 🔒 Cloudflare IP Whitelist Manager
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-github--runner--ip--whitelister--cloudflare-blue.svg?colorA=24292e&colorB=0366d6&style=flat&longCache=true&logo=github)](https://github.com/marketplace/actions/github-runner-ip-whitelister-cloudflare)
-[![CI](https://github.com/DiyRex/gh-cf-ip-whitelist/actions/workflows/test.yml/badge.svg)](https://github.com/DiyRex/gh-cf-ip-whitelist/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/release/DiyRex/gh-cf-ip-whitelist.svg)](https://github.com/DiyRex/gh-cf-ip-whitelist/releases)
 
