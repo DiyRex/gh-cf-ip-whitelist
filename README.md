@@ -1,7 +1,7 @@
 # 🔒 Cloudflare IP Whitelist Manager
 
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Cloudflare%20IP%20Whitelist-blue.svg?colorA=24292e&colorB=0366d6&style=flat&longCache=true&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAM6wAADOsB5dZE0gAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAERSURBVCiRhZG/SsMxFEZPfsVJ61jbxaF0cRQRcRJ9hlYn30IHN/+9iquDCOIsblIrOjqKgy5aKoJQj4n3EPI/tI85rXcX3j0Ntu9Nd52dGNtHHOLg6VevwYcJzD8sYU8h6LYU5z9z3OWJczFgeTtLQxO4UbLccOYuN3dWIGKJ9nWgRSckJxMJ4VpYJ5LZk/B7FrVTOgJ+N3cX3mM+ZlJ+q8pNvF6gD2s+FgKI5xEZJo5PROZFCp+HPcEZJZAoGpwKcEH48fKPYMhYw5K1o08XEWNmKJ5d/2EDEQ8SQl2uxqrqNJCzH7Bj6zS7gfKdSTVvnKEkr2dB4P2OwKhF5VzDv8z2xvUOLtX3MwAA)[https://github.com/marketplace/actions/cloudflare-ip-whitelist-manager]
-[![CI](https://github.com/YourUsername/gh-cf-ip-whitelist/actions/workflows/test.yml/badge.svg)](https://github.com/YourUsername/gh-cf-ip-whitelist/actions/workflows/test.yml)
+[![CI](https://github.com/DiyRex/gh-cf-ip-whitelist/actions/workflows/test.yml/badge.svg)](https://github.com/DiyRex/gh-cf-ip-whitelist/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Automatically manage Cloudflare IP access rules for CI/CD pipelines. Perfect for **Playwright**, **Selenium**, **Cypress**, and other testing frameworks that need to bypass Cloudflare protection.
@@ -49,7 +49,7 @@ jobs:
     # 🔒 Whitelist runner IP
     - name: Whitelist runner IP
       id: whitelist
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -62,7 +62,7 @@ jobs:
     # 🧹 Cleanup (always runs, even on failure)
     - name: Remove whitelist
       if: always()
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -88,7 +88,7 @@ jobs:
     
     - name: Whitelist for Playwright
       id: whitelist
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -100,7 +100,7 @@ jobs:
     
     - name: Cleanup whitelist
       if: always()
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -122,7 +122,7 @@ jobs:
     
     - name: Whitelist for staging
       id: staging-rule
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN_STAGING }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID_STAGING }}
@@ -136,7 +136,7 @@ jobs:
     
     - name: Cleanup staging
       if: always()
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN_STAGING }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID_STAGING }}
@@ -152,7 +152,7 @@ jobs:
     
     - name: Whitelist for production
       id: prod-rule
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN_PROD }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID_PROD }}
@@ -167,7 +167,7 @@ jobs:
     
     - name: Cleanup production
       if: always()
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN_PROD }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID_PROD }}
@@ -179,7 +179,7 @@ jobs:
 
 ```yaml
 - name: Custom whitelist rule
-  uses: YourUsername/gh-cf-ip-whitelist@v1
+  uses: DiyRex/gh-cf-ip-whitelist@v1
   with:
     api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -247,7 +247,7 @@ jobs:
 ```yaml
 - name: Whitelist with error handling
   id: whitelist
-  uses: YourUsername/gh-cf-ip-whitelist@v1
+  uses: DiyRex/gh-cf-ip-whitelist@v1
   continue-on-error: true
   with:
     api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -279,7 +279,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Emergency cleanup
-      uses: YourUsername/gh-cf-ip-whitelist@v1
+      uses: DiyRex/gh-cf-ip-whitelist@v1
       with:
         api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         zone-id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -298,7 +298,7 @@ strategy:
 steps:
 - name: Whitelist for ${{ matrix.environment }}
   id: whitelist
-  uses: YourUsername/gh-cf-ip-whitelist@v1
+  uses: DiyRex/gh-cf-ip-whitelist@v1
   with:
     api-token: ${{ secrets[format('CLOUDFLARE_API_TOKEN_{0}', matrix.environment)] }}
     zone-id: ${{ secrets[format('CLOUDFLARE_ZONE_ID_{0}', matrix.environment)] }}
@@ -362,7 +362,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ```bash
 # Clone repository
-git clone https://github.com/YourUsername/gh-cf-ip-whitelist.git
+git clone https://github.com/DiyRex/gh-cf-ip-whitelist.git
 cd gh-cf-ip-whitelist
 
 # Test locally
@@ -379,8 +379,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🌟 Support
 
 - 📖 **Documentation**: [Full docs available here](#)
-- 🐛 **Issues**: [Report bugs or request features](https://github.com/YourUsername/gh-cf-ip-whitelist/issues)
-- 💬 **Discussions**: [Join the community](https://github.com/YourUsername/gh-cf-ip-whitelist/discussions)
+- 🐛 **Issues**: [Report bugs or request features](https://github.com/DiyRex/gh-cf-ip-whitelist/issues)
+- 💬 **Discussions**: [Join the community](https://github.com/DiyRex/gh-cf-ip-whitelist/discussions)
 - ⭐ **Star this repo** if it helped you!
 
 ---
@@ -389,6 +389,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for the CI/CD community**
 
-[⭐ Star](https://github.com/YourUsername/gh-cf-ip-whitelist) • [🐛 Report Bug](https://github.com/YourUsername/gh-cf-ip-whitelist/issues) • [✨ Request Feature](https://github.com/YourUsername/gh-cf-ip-whitelist/issues)
+[⭐ Star](https://github.com/DiyRex/gh-cf-ip-whitelist) • [🐛 Report Bug](https://github.com/DiyRex/gh-cf-ip-whitelist/issues) • [✨ Request Feature](https://github.com/DiyRex/gh-cf-ip-whitelist/issues)
 
 </div>
